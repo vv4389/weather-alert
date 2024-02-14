@@ -1,7 +1,6 @@
 import json
 import urllib.request
 
-import openai
 from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import render
 
@@ -9,6 +8,7 @@ from .models import ClimateData, UserSubscription
 import replicate
 import boto3
 import os
+
 
 def index(request):
     if request.method == 'POST':
@@ -24,7 +24,7 @@ def index(request):
                 session = boto3.Session(
                     aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
                     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-                    region_name=os.getenv('AWS_ACCESS_KEY_ID')  # Optional, if you didn't set a default region
+                    region_name=os.getenv('AWS_DEFAULT_REGION')  # Optional, if you didn't set a default region
                 )
                 sns_client = session.client('sns')
                 message = f"New weather data available for {address}. Precautions:\n{precautions}."
@@ -46,7 +46,7 @@ def index(request):
                 sns_client = boto3.Session(
                     aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
                     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-                    region_name=os.getenv('AWS_ACCESS_KEY_ID')  # Optional, if you didn't set a default region
+                    region_name=os.getenv('AWS_DEFAULT_REGION')  # Optional, if you didn't set a default region
                 ).client('sns')
 
                 try:
@@ -54,8 +54,7 @@ def index(request):
                     response = sns_client.subscribe(
                         Protocol='email',
                         TopicArn=os.getenv('TopicArn'),
-                        Endpoint=email,
-                        AutoConfirm=True
+                        Endpoint=email
                     )
                     subscription_arn = response['SubscriptionArn']
                     subscription.subscription_arn = subscription_arn
@@ -166,14 +165,14 @@ def remove_subscription(request):
                 session = boto3.Session(
                     aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
                     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-                    region_name=os.getenv('AWS_ACCESS_KEY_ID')  # Optional, if you didn't set a default region
+                    region_name=os.getenv('AWS_DEFAULT_REGION')  # Optional, if you didn't set a default region
                 )
                 sns_client = session.client('sns')
 
                 try:
                     # Use list_subscriptions_by_topic to find the subscription
                     response = sns_client.list_subscriptions_by_topic(
-                        TopicArn='arn:aws:sns:us-east-2:510794644386:weather-aleart'
+                        TopicArn=os.getenv('TopicArn')
                     )
                     print(response)
                     for sub in response['Subscriptions']:
@@ -182,27 +181,20 @@ def remove_subscription(request):
                             subscription.subscription_arn = subscription_arn
                             subscription.save()
                             print(f"Found subscription ARN: {subscription_arn} for email: {email}")
-                            try:
-                                sns_client.unsubscribe(
-                                    SubscriptionArn=subscription_arn
-                                )
-                                print(f"Unsubscribed email: {email}")
-                            except Exception as e:
-                                print(f"Failed to unsubscribe email: {e}")
+                            if subscription_arn != 'PendingConfirmation':
+                                try:
+                                    sns_client.unsubscribe(
+                                        SubscriptionArn=subscription_arn
+                                    )
+                                    print(f"Unsubscribed email: {email}")
+                                except Exception as e:
+                                    print(f"Failed to unsubscribe email: {e}")
 
                     if not subscription.subscription_arn:
                         raise Exception(f"Subscription not found for email: {email}")
 
                 except Exception as e:
                     print(f"Failed to fetch subscription ARN: {e}")
-
-                # try:
-                #     sns_client.unsubscribe(
-                #         SubscriptionArn=subscription_arn
-                #     )
-                #     print(f"Unsubscribed email: {email}")
-                # except Exception as e:
-                #     print(f"Failed to unsubscribe email: {e}")
 
                 return HttpResponseRedirect('/')  # Replace with your desired action
 
