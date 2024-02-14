@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Climate Monitoring App</title>
+    </head>
+<body>
+<h1>Climate Monitoring App</h1>
+
+<form action="" id="addressForm" method="post">
+    {% csrf_token %}
+    <label for="address">Address:</label>
+    <input id="address" name="address" required type="text">
+    <button type="submit">Submit</button>
+</form>
+<h2>Climate Data</h2>
+<table>
+    <tr>
+        <th>Date</th>
+        <th>Temperature (°F)</th>
+        <th>Humidity (%)</th>
+        <th>Wind Speed (mph)</th>
+    </tr>
+    {% for data in climate_data %}
+    <tr>
+        <td>{{ data.datetime }}</td>
+        <td>{{ data.temp }}</td>
+        <td>{{ data.humidity }}</td>
+        <td>{{ data.windspeed }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="4">No climate data available.</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<style>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    padding: 8px;
+    text-align: left;
+  }
+
+  th {
+    background-color: #f2f2f2;
+  }
+
+  tr:nth-child(even) {
+    background-color: #f2f2f2;
+  }
+
+
+</style>
+<h2>Subscriptions</h2>
+<form action="" id="subscription-form" method="post">
+    <label for="email">Email:</label>
+    <input id="email" name="email" required type="text">
+    {% csrf_token %}
+
+    <button type="submit">Subscribe</button>
+</form>
+<ul id="subscription-list">
+    {% for subscription in subscriptions %}
+    <li>
+        {{ subscription.email }}
+        <form action="{% url 'remove_subscription' %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="email" value="{{ subscription.email }}">
+            <button type="submit" class="remove-subscription">Remove</button>
+        </form>
+    </li>
+    {% empty %}
+    <li>No subscriptions yet.</li>
+    {% endfor %}
+</ul>
+
+<h2>Weather Condition</h2>
+<p>
+    {% if is_weather_worsening %}
+    Change of 5 units detected in any of the weather data<br>
+    Weather condition is worsening over the next 5 days.
+    {% else %}
+    Weather condition is stable or improving over the next 5 days.
+    {% endif %}
+</p>
+
+</body>
+</html>
